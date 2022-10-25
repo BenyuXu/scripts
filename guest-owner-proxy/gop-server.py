@@ -21,8 +21,12 @@ import hashlib
 import logging
 
 keysets = {}
-sevtool_path = "sevtool"
-certs_path = "/tmp/sev-guest-owner-proxy/certs/"
+hag_path = "hag"
+certs_path = "/tmp/csv-guest-owner-proxy/certs/"
+ovmf_path = "/opt/csv/ccv0-guest/OVMF.fd"
+cmdline_file = "/opt/csv/ccv0-guest/cmdline"
+kernel_file = "/opt/csv/ccv0-guest/vmlinuz-5.15.0-rc5+"
+initrd_file = "/opt/csv/ccv0-guest/initrd.pre.img"
 connection_id = 0
 log_level_output = logging.INFO
 enable_measurement = True 
