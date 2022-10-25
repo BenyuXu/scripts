@@ -19,6 +19,7 @@ import hmac
 import base64
 import hashlib
 import logging
+import os
 
 keysets = {}
 hag_path = "hag"
@@ -28,6 +29,7 @@ cmdline_file = "/opt/csv/ccv0-guest/cmdline"
 kernel_file = "/opt/csv/ccv0-guest/vmlinuz-5.15.0-rc5+"
 initrd_file = "/opt/csv/ccv0-guest/initrd.pre.img"
 connection_id = 0
+build_id = 1600
 log_level_output = logging.INFO
 enable_measurement = True 
 
@@ -144,19 +146,53 @@ class SetupService(pre_attestation_pb2_grpc.SetupServicer):
             f.write(request.PlatformPublicKey)
 
         # generate launch blob
-        # use sevtool for now. might switch in the future
-        cmd = "sudo {} --ofolder {} --generate_launch_blob {}". \
-                format(sevtool_path, connection_certs_path, request.Policy)
-        subprocess.run(cmd.split())
+        # use hag for now. might switch in the future
+
+        cmd = "sudo {} --set_out_dir {}". \
+                format(hag_path, connection_certs_path)
+        os.system(cmd)
+
+        cmd = "sudo cp /opt/csv/pdh.cert {}". \
+                format(connection_certs_path)
+        os.system(cmd)
+
+        cmd = "sudo cp {} {}". \
+                format(cmdline_file, connection_certs_path)
+        os.system(cmd)
+
+        cmd = "sudo cp {} {}/initramfs.img". \
+                format(initrd_file, connection_certs_path)
+        os.system(cmd)
+
+        cmd = "sudo cp {} {}/bzImage". \
+                format(kernel_file, connection_certs_path)
+        os.system(cmd)
+
+        cmd = "sudo {} --generate_policy 0 0 0 0 0 0 0 0". \
+                format(hag_path)
+        os.system(cmd)
+
+        os.chdir(connection_certs_path)
+
+        cmd = "sudo hag --generate_launch_blob {} {} true". \
+                format(build_id, ovmf_path)
+        os.system(cmd)
+
+
+        cmd = r"sudo tr -d '\n' < {}/launch_blob.bin > {}/launch_blob.b64".format(connection_certs_path, connection_certs_path)
+        os.system(cmd)
+
+        cmd = r"sudo tr -d '\n' < {}/guest_owner_dh.cert > {}/guest_owner_dh.b64".format(connection_certs_path, connection_certs_path)
+        os.system(cmd)
 
         logging.info("Launch Bundle created for connection{}".format(cid))
 
         # read in the launch blob
-        with open(path.join(connection_certs_path, "launch_blob.bin"), "rb") as f:
+        with open(path.join(connection_certs_path, "launch_blob.b64"), "rb") as f:
             launch_blob = f.read()
 
         # read in the guest owner public key
-        with open(path.join(connection_certs_path, "godh.cert"), "rb") as f:
+        with open(path.join(connection_certs_path, "guest_owner_dh.b64"), "rb") as f:
             godh = f.read()
 
         response = BundleResponse(GuestOwnerPublicKey = godh, \
